@@ -1,0 +1,226 @@
+{
+  "version": "1.0",
+  "tag": "master",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "Project Setup and Foundation",
+      "description": "Initialize Python project structure with modern tooling (uv/poetry), create directory structure, configure pyproject.toml with dependencies, set up Git repository, and create initial documentation files",
+      "status": "pending",
+      "priority": "high",
+      "dependencies": [],
+      "details": "Set up the foundational project structure following best practices for Python async applications. Use uv for fast dependency management. Create src/proxy/ directory structure with subdirectories for handlers/, filters/, cache/, streaming/, compression/, routing/, and utils/. Initialize pyproject.toml with core dependencies: aiohttp, asyncio, pydantic, structlog, prometheus-client. Create config/, tests/, and docs/ directories. Set up .gitignore, README.md, and CLAUDE.md files.",
+      "testStrategy": "Verify project structure is created correctly, dependencies install without errors, and all required directories exist. Run 'uv pip install -e \".[dev]\"' successfully.",
+      "subtasks": []
+    },
+    {
+      "id": 2,
+      "title": "Configuration Management System",
+      "description": "Implement configuration loading using Pydantic Settings with support for YAML/TOML files, environment variables, and multi-environment configs (dev/prod)",
+      "status": "pending",
+      "priority": "high",
+      "dependencies": [1],
+      "details": "Create src/proxy/config.py with Pydantic BaseSettings for type-safe configuration. Support loading from config/proxy.yaml, config/proxy.dev.yaml, and config/proxy.prod.yaml. Implement environment variable overrides (PROXY_HOST, PROXY_PORT, LOG_LEVEL, etc.). Include validation for required fields, port ranges, and path existence. Create configuration sections for: server (host/port/TLS), routing (backend rules), security (filtering/rate limiting), cache, CLI integration, logging, and metrics. Support loading configurations via __init__ based on ENVIRONMENT variable.",
+      "testStrategy": "Unit tests for config loading from YAML, env var overrides, validation errors for invalid values, and multi-environment support. Test default values and required field enforcement.",
+      "subtasks": []
+    },
+    {
+      "id": 3,
+      "title": "Structured Logging System",
+      "description": "Set up structlog for structured JSON logging with context propagation, log levels (debug/info/warn/error), and integration with request tracing",
+      "status": "pending",
+      "priority": "high",
+      "dependencies": [2],
+      "details": "Create src/proxy/logging.py with structlog configuration. Set up processors for: timestamp addition, log level filtering, exception formatting, and JSON serialization. Implement context binding for request IDs, client IPs, and method/URL tracking. Support both JSON (production) and colored console (development) output formats based on LOG_FORMAT env var. Include log sanitization filter to remove sensitive data (API keys, passwords) from logs. Create helper functions for adding request context to logger.",
+      "testStrategy": "Unit tests for log format output, context binding, log level filtering, and sensitive data sanitization. Verify JSON structure in production mode and readable format in development.",
+      "subtasks": []
+    },
+    {
+      "id": 4,
+      "title": "Core HTTP Server Implementation",
+      "description": "Build the main proxy server using aiohttp with async request handling, connection management, and graceful shutdown support",
+      "status": "pending",
+      "priority": "high",
+      "dependencies": [3],
+      "details": "Create src/proxy/server.py with aiohttp.web Application and async event loop. Implement main server class with lifecycle methods: start(), stop(), and handle_shutdown(). Set up TCP listener on configured host/port with connection limits and timeouts. Implement request dispatcher that routes to appropriate handlers based on method (CONNECT vs regular HTTP). Add middleware for: request logging, error handling, and response timing. Support graceful shutdown with connection draining (wait for in-flight requests with timeout). Include health check endpoints at /health/liveness, /health/readiness, and /health/startup.",
+      "testStrategy": "Integration tests for server start/stop, connection handling, timeout enforcement, and graceful shutdown. Test with multiple concurrent connections and verify no connection leaks. Health endpoint tests for each endpoint.",
+      "subtasks": []
+    },
+    {
+      "id": 5,
+      "title": "HTTP Request Handler (GET/POST/PUT/DELETE/HEAD/OPTIONS)",
+      "description": "Implement HTTP/1.1 request forwarding handler with header manipulation, backend connection, and response streaming",
+      "status": "pending",
+      "priority": "high",
+      "dependencies": [4],
+      "details": "Create src/proxy/handlers/http.py with HTTPRequestHandler class. Implement async handle() method that: parses incoming request (method, URL, headers, body), validates request format and size limits (max 10MB body), prepares backend request with modified headers (add X-Forwarded-For, Via, X-Real-IP), establishes connection to backend using aiohttp.ClientSession, forwards request body in chunks if present, receives backend response, and streams response back to client with chunked encoding. Support all standard HTTP methods. Implement timeout handling (30s read, 30s write, 120s idle) and connection pooling for backend connections.",
+      "testStrategy": "Integration tests for each HTTP method (GET/POST/PUT/DELETE/HEAD/OPTIONS), large body handling, timeout scenarios, backend error handling (4xx/5xx), and connection reuse. Test with real HTTP servers (httpbin.org).",
+      "subtasks": []
+    },
+    {
+      "id": 6,
+      "title": "HTTPS Tunneling (CONNECT Method)",
+      "description": "Implement CONNECT method handler for HTTPS tunneling with TLS passthrough and bidirectional data relay",
+      "status": "pending",
+      "priority": "high",
+      "dependencies": [4],
+      "details": "Create src/proxy/handlers/connect.py with ConnectHandler class. Implement CONNECT method handling: parse CONNECT request for target host:port, validate target (check against allowed domains), establish TCP connection to target backend, send '200 Connection Established' response to client, and set up bidirectional data relay between client and backend using asyncio tasks for both directions. Handle TLS passthrough (no decryption). Implement connection timeout (60s) and idle timeout (300s). Support connection draining on shutdown. Add error handling for connection failures and timeout scenarios.",
+      "testStrategy": "Integration tests for HTTPS tunneling to real sites (https://google.com, https://github.com), connection establishment, bidirectional data flow, timeout handling, and graceful connection closure. Test with curl -x proxy_url https://example.com.",
+      "subtasks": []
+    },
+    {
+      "id": 7,
+      "title": "Request Routing System",
+      "description": "Implement routing logic to select backend targets based on host matching, path patterns, and load balancing algorithms",
+      "status": "pending",
+      "priority": "medium",
+      "dependencies": [5],
+      "details": "Create src/proxy/routing/router.py with Router class. Implement routing rule evaluation based on: host matching (exact and wildcard patterns), path prefix matching, header-based routing (optional), and default backend fallback. Support loading routing rules from configuration with priority ordering. Implement basic load balancing algorithms: round-robin (Phase 1), and least-connections (Phase 4). Track backend health and exclude unhealthy backends from routing. Add routing decision logging with matched rule and selected backend.",
+      "testStrategy": "Unit tests for rule matching (exact host, wildcard host, path prefix), priority ordering, default backend selection, and load balancing distribution. Integration tests with multiple backend targets verifying round-robin distribution.",
+      "subtasks": []
+    },
+    {
+      "id": 8,
+      "title": "CLI Process Integration Foundation",
+      "description": "Build async subprocess management for spawning CLI processes, capturing stdout/stderr, and handling process lifecycle",
+      "status": "pending",
+      "priority": "high",
+      "dependencies": [4],
+      "details": "Create src/proxy/streaming/process.py with ProcessManager class. Implement async process spawning using asyncio.create_subprocess_exec with: command allowlist validation (only execute allowed binaries), stdin pipe for input data, stdout/stderr pipes for output capture, and process timeout enforcement (60s default, configurable). Support concurrent process execution with limit (max 10 concurrent). Implement process cleanup on timeout or completion. Add process lifecycle events (started, output_received, completed, error). Track active processes and handle graceful shutdown (send SIGTERM, wait, then SIGKILL).",
+      "testStrategy": "Unit tests for process spawning, timeout handling, stdout/stderr capture, concurrent execution limits, allowlist validation (reject unauthorized commands), and graceful shutdown. Test with simple commands like 'echo', 'python -c print()', 'sleep'.",
+      "subtasks": []
+    },
+    {
+      "id": 9,
+      "title": "HTTP Chunked Encoding for Streaming",
+      "description": "Implement HTTP chunked transfer encoding for streaming CLI process output in real-time to clients",
+      "status": "pending",
+      "priority": "high",
+      "dependencies": [8],
+      "details": "Create src/proxy/streaming/chunked.py with ChunkedEncoder class. Implement chunked encoding according to RFC 7230: format chunks as 'size\\r\\n data\\r\\n', send final '0\\r\\n\\r\\n' chunk, and handle chunk size calculation. Create streaming response wrapper that wraps async generator and yields chunks. Implement bidirectional streaming: client -> process (stdin), process -> client (stdout/stderr as separate chunks with type markers). Add JSON-formatted chunk payloads: {\"type\":\"stdout\",\"data\":\"...\"}, {\"type\":\"stderr\",\"data\":\"...\"}, {\"type\":\"exit\",\"code\":0}. Support flush intervals for low-latency streaming (100ms).",
+      "testStrategy": "Unit tests for chunk formatting, size calculation, final chunk handling, and JSON payload structure. Integration tests streaming process output (python script that prints lines) to HTTP client, verifying real-time delivery and proper chunk boundaries.",
+      "subtasks": []
+    },
+    {
+      "id": 10,
+      "title": "CLI Execution API Endpoint",
+      "description": "Create POST /cli/execute endpoint for triggering CLI commands with streaming response support",
+      "status": "pending",
+      "priority": "high",
+      "dependencies": [9],
+      "details": "Create CLI execution endpoint handler. Accept POST requests with JSON body: {\"command\":\"python\", \"args\":[\"script.py\"], \"stdin\":\"input\", \"stream\":true}. Validate command against allowlist. Spawn process using ProcessManager. Stream output using chunked encoding if stream=true, otherwise buffer and return complete output. Include process exit code in final response. Implement timeout handling (60s default) and return partial output on timeout. Add request validation for: command allowlist, arg sanitization, stdin size limits (1MB), and concurrent execution limits. Support both streaming and non-streaming modes.",
+      "testStrategy": "Integration tests for: streaming mode with real-time output, non-streaming mode with complete output, timeout handling, concurrent execution limits, allowlist validation (reject unauthorized commands), stdin input forwarding, and error scenarios. Test with curl and Python requests.",
+      "subtasks": []
+    },
+    {
+      "id": 11,
+      "title": "Domain-Based Content Filtering",
+      "description": "Implement domain blocklist/allowlist filtering with wildcard pattern matching and policy enforcement",
+      "status": "pending",
+      "priority": "medium",
+      "dependencies": [7],
+      "details": "Create src/proxy/filters/domain_block.py with DomainFilter class implementing BaseFilter interface. Support blocklist mode (block listed domains, allow others) and allowlist mode (allow listed domains, block others). Implement pattern matching: exact domain match (example.com), wildcard subdomain match (*.example.com), and subdomain-inclusive match (**.example.com). Load filtering rules from config/filters.yaml. Return 403 Forbidden for blocked domains with clear error message. Log all filtering decisions (allowed/blocked) with domain and rule matched. Support runtime rule updates without restart (future Phase 4).",
+      "testStrategy": "Unit tests for pattern matching (exact, wildcard, subdomains), blocklist/allowlist modes, rule precedence, and 403 response generation. Integration tests blocking real domains and verifying 403 status code and response body.",
+      "subtasks": []
+    },
+    {
+      "id": 12,
+      "title": "Rate Limiting System",
+      "description": "Implement per-client-IP rate limiting using token bucket algorithm with configurable limits and burst allowance",
+      "status": "pending",
+      "priority": "medium",
+      "dependencies": [4],
+      "details": "Create rate limiting middleware using token bucket algorithm. Track per-client-IP tokens with: requests_per_second limit (default 100), burst capacity (default 200), token refill rate (RPS), and token consumption per request (1 token). Implement async token bucket: add tokens at configured rate, consume tokens on request, reject with 429 Too Many Requests when insufficient tokens, and include Retry-After header with seconds to wait. Use in-memory storage with LRU eviction for client tracking (max 10,000 clients). Support rate limit exemptions for trusted IPs (configured in ACL). Log rate limit violations with client IP and current token count.",
+      "testStrategy": "Unit tests for token bucket logic (refill, consumption, burst), client tracking, and eviction. Integration tests with concurrent requests from same IP verifying 429 responses, Retry-After header values, and burst allowance. Load test to verify throughput limits.",
+      "subtasks": []
+    },
+    {
+      "id": 13,
+      "title": "Access Control Lists (ACLs)",
+      "description": "Implement IP-based access control with allowlist/denylist policies and configurable rules",
+      "status": "pending",
+      "priority": "medium",
+      "dependencies": [4],
+      "details": "Create src/proxy/filters/access_control.py with ACLFilter class. Support IP-based filtering with: CIDR notation (192.168.1.0/24), individual IP addresses, and IP range support. Implement allowlist mode (only listed IPs allowed) and denylist mode (listed IPs blocked). Load ACL rules from configuration. Return 403 Forbidden for unauthorized clients. Support multiple ACL profiles for different endpoints (future). Add X-Forwarded-For header parsing to extract real client IP behind proxies. Log all access control decisions with client IP, matched rule, and action taken.",
+      "testStrategy": "Unit tests for IP parsing, CIDR matching, range checking, allowlist/denylist modes, and X-Forwarded-For parsing. Integration tests with requests from different IPs verifying access granted/denied and 403 response for denied access.",
+      "subtasks": []
+    },
+    {
+      "id": 14,
+      "title": "Security Headers Injection",
+      "description": "Automatically inject security headers (HSTS, CSP, X-Frame-Options, X-Content-Type-Options) into all responses",
+      "status": "pending",
+      "priority": "medium",
+      "dependencies": [5],
+      "details": "Create security headers middleware. Inject security headers into all outgoing responses: Strict-Transport-Security: max-age=31536000; includeSubDomains (if HTTPS), Content-Security-Policy: default-src 'self' (configurable), X-Frame-Options: DENY, X-Content-Type-Options: nosniff, X-XSS-Protection: 1; mode=block, and Referrer-Policy: strict-origin-when-cross-origin. Support header customization via configuration for CSP policies. Skip header injection for health check endpoints. Add header validation to prevent header injection attacks. Log security header additions.",
+      "testStrategy": "Integration tests verifying all security headers present in responses, CSP policy customization from config, HSTS header only on HTTPS responses, and health endpoint exclusion. Test with curl -I and verify header presence.",
+      "subtasks": []
+    },
+    {
+      "id": 15,
+      "title": "Response Caching System",
+      "description": "Implement memory-based response caching with LRU eviction, TTL support, and cache key generation",
+      "status": "pending",
+      "priority": "medium",
+      "dependencies": [5],
+      "details": "Create src/proxy/cache/memory.py with MemoryCache class. Implement caching logic: generate cache keys from method+URL+headers (Vary support), store responses with metadata (headers, status, body, timestamp), implement LRU eviction when memory limit reached (256MB default), TTL-based expiration (300s default, configurable per cache entry), and respect Cache-Control headers from backend (no-cache, no-store, max-age). Only cache GET requests with 200/203/204/206/300/301 status codes. Support cache invalidation by URL pattern. Track cache metrics: hit rate, miss rate, eviction count, and memory usage. Implement cache-aside pattern: check cache -> on miss fetch from backend -> store in cache.",
+      "testStrategy": "Unit tests for cache key generation, LRU eviction, TTL expiration, Cache-Control header parsing, and selective caching by status code. Integration tests verifying cache hit/miss behavior, cache size limits, TTL expiration, and metrics accuracy.",
+      "subtasks": []
+    },
+    {
+      "id": 16,
+      "title": "Response Compression (gzip/brotli)",
+      "description": "Implement transparent response compression with algorithm selection based on Accept-Encoding headers",
+      "status": "pending",
+      "priority": "medium",
+      "dependencies": [5],
+      "details": "Create src/proxy/compression/gzip.py and brotli.py with compression handlers. Implement compression middleware: check Accept-Encoding header for supported algorithms (gzip, br/brotli), select best compression (prefer brotli if supported), compress response body asynchronously, add Content-Encoding header, remove Content-Length (use chunked), and update Vary header to include Accept-Encoding. Only compress text content types (text/*, application/json, application/javascript, application/xml). Skip compression for small responses (<1KB) and already-compressed content. Support compression level configuration (6 for gzip, 4 for brotli). Track compression ratio and bandwidth savings metrics.",
+      "testStrategy": "Unit tests for algorithm selection, content-type filtering, compression ratio calculation, and header manipulation. Integration tests with Accept-Encoding headers verifying correct algorithm selection, compressed response body, Content-Encoding header presence, and bandwidth savings measurement.",
+      "subtasks": []
+    },
+    {
+      "id": 17,
+      "title": "Prometheus Metrics Export",
+      "description": "Expose Prometheus-compatible metrics endpoint with counters, histograms, and gauges for observability",
+      "status": "pending",
+      "priority": "medium",
+      "dependencies": [4],
+      "details": "Create src/proxy/metrics.py with Prometheus client integration. Expose metrics on separate port (9090) at /metrics endpoint in Prometheus text format. Implement key metrics: http_requests_total (counter by method, status, backend), http_request_duration_seconds (histogram for latency p50/p95/p99), http_request_size_bytes (histogram for request body size), http_response_size_bytes (histogram for response size), cache_hits_total / cache_misses_total (counters), active_connections (gauge), backend_healthy (gauge per backend), rate_limit_violations_total (counter), and cli_processes_active (gauge). Include labels for: method, status_code, backend, cache_status. Auto-register metrics on startup.",
+      "testStrategy": "Unit tests for metric registration, label handling, and value updates. Integration tests verifying metrics endpoint returns Prometheus format, metrics update correctly after requests, histogram bucket distribution, and gauge accuracy for active connections.",
+      "subtasks": []
+    },
+    {
+      "id": 18,
+      "title": "Docker Containerization",
+      "description": "Create production-ready Dockerfile with multi-stage build, minimal image size, and security best practices",
+      "status": "pending",
+      "priority": "high",
+      "dependencies": [1],
+      "details": "Create Dockerfile with multi-stage build: base stage with Python 3.11-slim, build stage installing dependencies and building wheel, runtime stage copying artifacts and running as non-root user. Include: minimal system dependencies (libpq for psycopg2 if needed), Python package installation via uv or pip, application code copy, non-root user creation (app:app), volume mount points for /app/config, health check (curl /health/liveness), and CMD for starting proxy server. Create .dockerignore to exclude tests/, .git/, etc. Create docker-compose.yml with: proxy service, environment variable configuration, port mappings (8080:8080, 9090:9090), volume mounts for config, and optional backend service for testing.",
+      "testStrategy": "Build Docker image successfully, verify image size <200MB, test container starts and responds to health check, verify runs as non-root user, test with docker-compose up, and integration test proxying through container.",
+      "subtasks": []
+    },
+    {
+      "id": 19,
+      "title": "Comprehensive Testing Suite",
+      "description": "Create test infrastructure with unit tests, integration tests, and load tests covering all components",
+      "status": "pending",
+      "priority": "high",
+      "dependencies": [10, 15, 16, 17],
+      "details": "Set up testing infrastructure with pytest, pytest-asyncio, pytest-cov. Create tests/ directory structure: unit/ (isolated component tests), integration/ (end-to-end flow tests), and fixtures/ (shared test data). Implement test fixtures: mock backend HTTP server, test proxy instance with temp config, test HTTP client, and sample requests/responses. Write unit tests for: configuration loading, routing logic, filtering, caching, compression, and metrics. Write integration tests for: full request flow (client -> proxy -> backend -> client), HTTPS tunneling, CLI streaming, cache behavior, rate limiting, and security headers. Create load tests using locust or wrk to verify: 1000+ RPS throughput, <50ms p95 latency, and concurrent connection handling. Achieve 80%+ code coverage.",
+      "testStrategy": "Run pytest with coverage: pytest --cov=proxy --cov-report=html --cov-report=term-missing. Verify all tests pass, coverage >80%, integration tests cover critical paths, and load tests meet performance targets (1000 RPS, <50ms p95).",
+      "subtasks": []
+    },
+    {
+      "id": 20,
+      "title": "Documentation and Deployment Guide",
+      "description": "Create comprehensive documentation including API reference, deployment guide, configuration examples, and troubleshooting",
+      "status": "pending",
+      "priority": "medium",
+      "dependencies": [18, 19],
+      "details": "Create documentation in docs/ directory: README.md (project overview, quick start, features), API.md (endpoint reference for /cli/execute, /health/*, /metrics), CONFIG.md (configuration file format, all options with examples, environment variables), DEPLOYMENT.md (Docker deployment, Kubernetes manifests, production considerations), DEVELOPMENT.md (development setup, testing, code style guidelines), and TROUBLESHOOTING.md (common issues, debugging tips, FAQ). Update CLAUDE.md with project-specific guidance for AI assistance. Create example configuration files: config/proxy.example.yaml, config/filters.example.yaml. Add inline code documentation with docstrings (Google style) for all public APIs. Include architecture diagrams for request flow, HTTPS tunneling, and CLI streaming.",
+      "testStrategy": "Documentation review for completeness, accuracy, and clarity. Verify examples work as documented, all configuration options documented, and troubleshooting guide covers common scenarios. Test deployment guide on clean environment.",
+      "subtasks": []
+    }
+  ]
+}
