@@ -44,113 +44,73 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Total Time**: 7-13 hours
 
-## Technology Stack
+## Current Status
+
+**Location**: Git worktree at `.worktrees/poc-implementation`
+- **Branch**: `poc/implementation` (isolated from master)
+- **Status**: Ready to start Task #1 (Project Setup)
+- **Setup**: Git worktrees configured, `.worktrees/` in .gitignore
+
+**Next Step**: Create `pyproject.toml` and basic project structure
+
+## Technology Stack (POC)
 
 **Primary Language:** Python 3.8+ (3.11+ recommended)
 
-**Core Libraries:**
+**Core Libraries** (minimal for POC):
 - `aiohttp`: Async HTTP server/client framework
-- `asyncio`: Event-driven I/O
-- `pydantic` / `pydantic-settings`: Configuration with type safety
-- `structlog`: Structured logging
-- `prometheus-client`: Metrics exposition
-- `cryptography` / `pyOpenSSL`: TLS operations
-- `aiocache`: Async caching
+- `pyyaml`: Configuration loading
 - `pytest` + `pytest-asyncio`: Testing framework
+
+**That's it.** No complex dependencies for POC.
 
 **Package Management:** `uv` (preferred) or `poetry`
 
-## Architecture
+**Note**: Additional libraries (pydantic, structlog, prometheus, caching) are deferred to post-POC phases.
 
-### Component Structure
+## Architecture (POC - Simplified)
 
-```
-src/proxy/
-├── server.py           # Main proxy server, event loop, listener
-├── config.py           # Configuration loading/validation (pydantic)
-├── logging.py          # Structured logging setup (structlog)
-├── metrics.py          # Prometheus metrics exposition
-├── handlers/           # Request/response handlers
-│   ├── base.py         # Abstract base handler
-│   ├── http.py         # HTTP/1.1 request handling
-│   ├── https.py        # TLS termination/re-encryption
-│   └── connect.py      # CONNECT method (HTTPS tunneling)
-├── filters/            # Content filtering & security
-│   ├── base.py         # Filter interface (plugin pattern)
-│   ├── domain_block.py # Domain blocking
-│   ├── malware.py      # Content inspection
-│   └── access_control.py # IP-based ACL
-├── cache/              # Caching layer
-│   ├── memory.py       # In-memory cache (default)
-│   └── redis.py        # Redis cache (optional)
-├── streaming/          # CLI integration
-│   ├── process.py      # Async subprocess management
-│   └── chunked.py      # HTTP chunked encoding
-├── compression/        # Response compression
-│   ├── gzip.py
-│   └── brotli.py
-├── routing/            # Request routing
-│   └── router.py       # Routing logic, load balancing
-└── utils/              # Utilities
-    ├── headers.py      # Header manipulation
-    └── errors.py       # Custom exceptions
-```
-
-### Key Design Patterns
-
-1. **Event-driven I/O**: Asyncio-based for high concurrency
-2. **Middleware Pattern**: Request/response processing pipeline
-3. **Plugin Architecture**: Extensible filters and handlers
-4. **Stateless Design**: No in-memory session state (enables horizontal scaling)
-5. **Configuration-Driven**: Rules and policies in YAML/TOML config files
-
-### Request Flow
+### Simple Structure (~200 lines total)
 
 ```
-Client → Listener → Request Processor → Security Check
-                                            ↓ (Pass)
-                    Cache Check → (Miss) → Router
-                                            ↓
-                                    Backend Selection
-                                            ↓
-                    Backend ← Forward Request
-                                            ↓
-                    Receive Response ← Backend
-                                            ↓
-                        Response Handler → Compression
-                                            ↓
-                                     Inject Headers
-                                            ↓
-                                      Cache Store
-                                            ↓
-                Client ← Stream Response ← Logger
+src/
+└── proxy.py           # Single file with all POC functionality:
+                       # - HTTP server setup
+                       # - Request forwarding logic
+                       # - CONNECT method for HTTPS tunneling
+                       # - Basic error handling
+                       # - Stdout logging
+
+tests/
+└── test_proxy.py      # Basic tests for HTTP/HTTPS forwarding
+
+config.yaml            # Simple configuration (port, timeout, log level)
+pyproject.toml         # Minimal dependencies (aiohttp, pyyaml, pytest)
+Dockerfile             # Container for portability
+README.md              # Usage instructions
 ```
 
-### HTTPS Tunneling Flow
+**Note**: Complex architecture (handlers/, filters/, cache/, etc.) is deferred to post-POC phases.
 
+### Key Patterns (POC - Keep Simple)
+
+1. **Async I/O**: Use `asyncio` and `aiohttp` for concurrent connections
+2. **Single File**: All logic in one file (~200 lines) for simplicity
+3. **Basic Config**: YAML file with port, timeout, log level
+4. **Stdout Logging**: Simple print statements, no complex logging
+
+### Request Flows (POC)
+
+**HTTP Forwarding:**
 ```
-Client → CONNECT request → Security Check
-                              ↓ (Pass)
-          Establish TCP → Backend Connection
-                              ↓
-Client ← 200 Connection Established
-                              ↓
-Client ↔ Bidirectional Tunnel ↔ Backend
+Client → Proxy → Parse Request → Forward to Server → Stream Response → Client
 ```
 
-### CLI Streaming Flow
-
+**HTTPS Tunneling (CONNECT):**
 ```
-Client → POST /cli/execute → CLI Handler
-                                ↓
-                         Validate Command
-                                ↓
-                         Spawn Process
-                                ↓
-        Client ← Chunked Response ← Stdout
-        Client ← Chunked Response ← Stderr
-                                ↓
-        Client ← Final Chunk (exit code)
+Client → CONNECT request → Proxy → Establish TCP to Server
+       → 200 OK → Client
+       → Bidirectional tunnel (pass-through encrypted data)
 ```
 
 ## Development Commands
