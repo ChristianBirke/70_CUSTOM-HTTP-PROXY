@@ -4,22 +4,45 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Custom HTTP/HTTPS proxy server acting as an intermediary between clients and backend servers, providing performance optimization (caching, compression), security (TLS, content filtering), and real-time CLI process execution with streaming support.
+**Proof-of-Concept**: Lean HTTP/HTTPS proxy server demonstrating basic request forwarding between clients and servers.
 
-**Key Goals:**
-- High performance: <50ms latency (p95), 1000+ RPS per instance
-- Security: TLS 1.2+, domain filtering, rate limiting, input validation
-- Streaming: Real-time CLI process execution with HTTP chunked encoding
-- Scalability: Stateless design, horizontal scaling, 99.9% uptime target
+**POC Goals:**
+- ✅ Prove core concept works (HTTP forwarding, HTTPS tunneling)
+- ✅ Keep it simple (~200 lines of code)
+- ✅ Build in 7-13 hours (1-2 days)
+- ✅ Safe implementation with basic validation
+- ✅ Learn before committing to production features
 
-## Development Phases
+## Current Approach: Lean POC
 
-The project follows a 4-phase development approach:
+**Primary Document**: See `PRD-POC.md` for complete POC requirements
 
-1. **MVP (Phase 1)**: Core HTTP/HTTPS proxy with basic forwarding, CONNECT tunneling, CLI integration
-2. **Phase 2**: Security features - domain filtering, rate limiting, ACLs, structured logging
-3. **Phase 3**: Performance optimization - caching, compression, connection pooling, metrics
-4. **Phase 4**: Advanced features - HTTP/2, multiple CLI processes, Prometheus export, load balancing
+**What's Included** (POC features only):
+- HTTP/1.1 forwarding (GET, POST, PUT, DELETE, HEAD)
+- HTTPS tunneling via CONNECT method
+- Basic error handling (timeouts, connection failures)
+- Simple stdout logging
+- Docker container
+- Basic tests
+
+**What's Excluded** (Future consideration):
+- ❌ Caching, compression (premature optimization)
+- ❌ CLI process integration (complex, not core)
+- ❌ Rate limiting, domain filtering (production features)
+- ❌ Prometheus metrics (production features)
+- ❌ Load balancing (production features)
+- ❌ HTTP/2, HTTP/3 (unnecessary complexity)
+
+## POC Development Plan
+
+**5 Tasks** (replacing the original 20):
+1. **Project Setup** (1-2 hours): Basic structure, dependencies
+2. **HTTP Forwarding** (2-4 hours): Core proxy functionality
+3. **HTTPS Tunneling** (2-3 hours): CONNECT method
+4. **Error Handling & Logging** (1-2 hours): Safety and debugging
+5. **Docker & Documentation** (1-2 hours): Portability and usage docs
+
+**Total Time**: 7-13 hours
 
 ## Technology Stack
 
